@@ -35,7 +35,23 @@ if (Meteor.isClient){
 			return users;
 		}
 	})
-}
+
+	////////
+	/// EVENTS
+	////////
+	Template.navbar.events({
+		"click .js-add-doc":function(event){
+			event.preventDefault();
+			console.log("Add a new Doc");
+			if(!Meteor.user()){//user not available
+				alert("You need to login first");
+			}else{
+				Meteor.call("addDoc");
+			}
+		}
+	})
+}//end up meteor client
+
 
 if (Meteor.isServer){
 	Meteor.startup(function(){
@@ -44,9 +60,19 @@ if (Meteor.isServer){
 			Documents.insert({title: "My first document"});
 		}
 	});
-}//end up meteor client
+}
 
 Meteor.methods({
+	addDoc: function(){
+		var doc;
+		if(!this.userId){//not logged in
+			return;
+		}else{
+			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc"};
+			Documents.insert(doc)
+		}
+
+	},
 	addEditingUser: function(){
 		var doc, user, eusers;
 		doc = Documents.findOne();
