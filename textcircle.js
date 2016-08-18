@@ -2,10 +2,10 @@ this.Documents = new Mongo.Collection("documents");
 EditingUsers = new Mongo.Collection("editingUsers");
 
 if (Meteor.isClient){
-
 	Template.editor.helpers({
 		docid: function(){
-			return Documents.findOne()._id;
+			setupCurrentDocument();
+			return Session.get("docid");
 		},
 		config: function(){
 			return function(editor){
@@ -34,7 +34,30 @@ if (Meteor.isClient){
 			}
 			return users;
 		}
-	})
+	});
+
+	Template.navbar.helpers({
+		documents: function(){
+			return Documents.find({});
+		}
+	});
+
+	Template.docMeta.helpers({
+		document: function(){
+			return Documents.findOne({_id: Session.get("docid")});
+		}
+	});
+
+	Template.editableText.helpers({
+		userCanEdit: function(doc, Collection){
+			//can edit if the current doc owned by me.
+			doc = Documents.findOne({_id: Session.get("docid"), owner: Meteor.userId()});
+			if(doc){
+				return true;
+			}return false;
+
+		}
+	});
 
 	////////
 	/// EVENTS
@@ -46,8 +69,17 @@ if (Meteor.isClient){
 			if(!Meteor.user()){//user not available
 				alert("You need to login first");
 			}else{
-				Meteor.call("addDoc");
+				Meteor.call("addDoc", function(err, res){
+					if(!err){// all good
+						console.log("event callback receive id: " + res);
+						Session.set("docid", res);
+					}
+				});
 			}
+		},
+		"click .js-load-doc":function(event){
+			console.log(this);
+			Session.set("docid", this._id);
 		}
 	})
 }//end up meteor client
@@ -69,7 +101,10 @@ Meteor.methods({
 			return;
 		}else{
 			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc"};
-			Documents.insert(doc)
+			var id = Documents.insert(doc);
+			console.log("adddoc method: got an id" + id);
+			return id;
+
 		}
 
 	},
@@ -92,6 +127,16 @@ Meteor.methods({
 		EditingUsers.upsert({_id:eusers._id}, eusers);
 	}
 })
+
+function setupCurrentDocument(){
+	var doc;
+	if(!Session.get("docid")){//no doc id set yet
+		doc = Documents.findOne();
+		if(doc){
+			Session.set("docid", doc._id);
+		}
+	}
+}
 
 
 function fixObjectKeys(obj){
