@@ -2,6 +2,10 @@ this.Documents = new Mongo.Collection("documents");
 EditingUsers = new Mongo.Collection("editingUsers");
 
 if (Meteor.isClient){
+
+	Meteor.subscribe("documents");
+	Meteor.subscribe("editingUsers");
+
 	Template.editor.helpers({
 		docid: function(){
 			setupCurrentDocument();
@@ -38,13 +42,24 @@ if (Meteor.isClient){
 
 	Template.navbar.helpers({
 		documents: function(){
-			return Documents.find({});
+			return Documents.find();
 		}
 	});
 
 	Template.docMeta.helpers({
 		document: function(){
 			return Documents.findOne({_id: Session.get("docid")});
+		},
+		canEdit: function(){
+			Documents.findOne({_id: Session.get("docid")});
+			var doc;
+			doc = Documents.findOne({_id: Session.get("docid")});
+			if(doc){
+				if(doc.owner == Meteor.userId()){
+					return true;
+				}
+			}
+			return false;
 		}
 	});
 
@@ -58,6 +73,7 @@ if (Meteor.isClient){
 
 		}
 	});
+
 
 	////////
 	/// EVENTS
@@ -82,6 +98,14 @@ if (Meteor.isClient){
 			Session.set("docid", this._id);
 		}
 	})
+
+	Template.docMeta.events({
+		"click .js-tog-private": function(event){
+			console.log(event.target.checked);
+			var doc = {_id: Session.get("docid"), isPrivate: event.target.checked};
+			Meteor.call("updateDocPrivacy", doc);
+		}
+	})
 }//end up meteor client
 
 
@@ -89,8 +113,21 @@ if (Meteor.isServer){
 	Meteor.startup(function(){
 		// code to run on server at startup
 		if(!Documents.findOne()){//no document yet
-			Documents.insert({title: "My first document"});
+			Documents.insert({title: "My first document", isPrivate:false});
 		}
+	});
+
+	Meteor.publish("documents", function(){
+		return Documents.find({
+			$or:[
+				{isPrivate: false},
+				{owner: this.userId}
+			]}
+		);
+	});
+
+	Meteor.publish("editingUsers", function(){
+		return EditingUsers.find();
 	});
 }
 
@@ -100,13 +137,22 @@ Meteor.methods({
 		if(!this.userId){//not logged in
 			return;
 		}else{
-			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc"};
+			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc", isPrivate: false};
 			var id = Documents.insert(doc);
 			console.log("adddoc method: got an id" + id);
 			return id;
 
 		}
 
+	},
+	updateDocPrivacy: function(doc){
+		console.log("updateDocPrivacy method");
+		console.log(doc);
+		var realDoc = Documents.findOne({_id: doc._id});
+		if(realDoc){
+			realDoc.isPrivate = doc.isPrivate;
+			Documents.update({_id: doc._id}, realDoc);
+		}
 	},
 	addEditingUser: function(){
 		var doc, user, eusers;
