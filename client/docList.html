@@ -1,7 +1,9 @@
 <template name="docList">
 	<div class="container top-margin">
 		{{#each documents}}
-		{{title}}
+			<a href="/documents/{{_id}}">
+				{{title}}
+			</a>
 		{{/each}}
 	</div>
 </template>
