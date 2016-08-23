@@ -4,7 +4,7 @@ Meteor.methods({
 		if(!this.userId){//not logged in
 			return;
 		}else{
-			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc", isPrivate: false};
+			doc = {owner: this.userId, createdOn: new Date(), title: "my new doc"};
 			var id = Documents.insert(doc);
 			console.log("adddoc method: got an id" + id);
 			return id;
@@ -21,9 +21,9 @@ Meteor.methods({
 			Documents.update({_id: doc._id}, realDoc);
 		}
 	},
-	addEditingUser: function(){
+	addEditingUser: function(docid){
 		var doc, user, eusers;
-		doc = Documents.findOne();
+		doc = Documents.findOne({_id: docid});
 		if(!doc){return;} //no doc give up
 		if(!this.userId){return;}//no logged in user give up
 		//now I have a doc and possibly a user
